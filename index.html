@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mamo Site - بوابة الأدوات الذكية</title>
+    
+    <!-- SEO & Social Media Meta Tags -->
+    <meta name="description" content="إليك منصة Mamo Site، دليلك الشامل لأفضل المواقع، الأدوات الذكية، القوالب، وما يهم صناع المحتوى ورواد الأعمال باللغة العربية.">
+    <meta property="og:title" content="Mamo Site - بوابة الأدوات الذكية">
+    <meta property="og:description" content="بوابة ذكية تجمع لك كل ما تحتاجه من موارد رقمية في مكان واحد بتنسيق احترافي. ابدأ باستكشاف آلاف الأدوات الآن!">
+    <meta property="og:image" content="mamo.png">
+    <meta property="og:url" content="https://mamosite.netlify.app/">
+    <meta name="twitter:card" content="summary_large_image">
+    
+    <!-- Google Fonts: Inter and Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="dark-mode">
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo-section">
+                <img src="mamo.png" alt="Mamo Logo" class="nav-logo">
+                <span class="logo-text">Mamo Site</span>
+            </div>
+            <div class="nav-actions">
+                <button id="theme-toggle" class="nav-btn" aria-label="Toggle Theme"><i class="fas fa-moon"></i></button>
+                <button id="open-suggest-modal" class="nav-btn primary">اقترح موقعاً</button>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>اكتشف أفضل <span class="highlight">الأدوات والمواقع</span> التقنية</h1>
+            <p>بوابة ذكية تجمع لك كل ما تحتاجه من موارد رقمية في مكان واحد بتنسيق احترافي.</p>
+            
+            <div class="search-container">
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="main-search" placeholder="بحث عن اسم الموقع، الفائدة، أو الوصف..." autocomplete="off">
+                    <!-- Suggestions Dropdown -->
+                    <div id="search-suggestions" class="suggestions-dropdown hidden"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <aside class="filters-section">
+            <h3 class="filter-title"><i class="fas fa-filter"></i> التصنيفات</h3>
+            <div id="category-chips" class="chips-container">
+                <button class="chip active" data-category="all">الكل</button>
+                <!-- ستتم إضافة التصنيفات برمجياً -->
+            </div>
+        </aside>
+
+        <section class="results-section">
+            <div class="results-header">
+                <span id="results-count">جاري التحميل...</span>
+                <div class="sort-dropdown">
+                    <i class="fas fa-sort-amount-down sort-icon"></i>
+                    <select id="sort-select" class="custom-select">
+                        <option value="newest">الأحدث</option>
+                        <option value="alphabetical">أبجدياً</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="sites-grid" class="sites-grid">
+                <!-- ستتم إضافة البطاقات برمجياً -->
+                <div class="loading-shimmer-container">
+                    <div class="shimmer-card"></div>
+                    <div class="shimmer-card"></div>
+                    <div class="shimmer-card"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>جميع الحقوق محفوظة &copy; 2026 - Mamo Site</p>
+    </footer>
+
+    <!-- Suggest Site Modal -->
+    <div id="suggest-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div class="modal-header">
+                <h2><i class="fas fa-lightbulb"></i> اقترح موقعاً جديداً</h2>
+                <p>شاركنا المواقع والأدوات المفيدة لتتم مراجعتها وإضافتها للمنصة.</p>
+            </div>
+            <form id="suggest-form" class="suggest-form">
+                <div class="form-group">
+                    <label>رابط الموقع أو اسمه <span class="required">*</span></label>
+                    <input type="text" id="sug-website" required placeholder="مثال: https://example.com">
+                </div>
+                <div class="form-group">
+                    <label>التصنيف الرئيسي <span class="required">*</span></label>
+                    <select id="sug-category" required>
+                        <option value="" disabled selected hidden>يرجى اختيار تصنيف رئيسي</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>التصنيف الفرعي <span class="required">*</span></label>
+                    <select id="sug-sub-category" required disabled>
+                        <option value="" disabled selected>اختر التصنيف الرئيسي أولاً</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>وصف الموقع <span class="required">*</span></label>
+                    <textarea id="sug-desc" required placeholder="اكتب نبذة مختصرة عن الموقع..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>الفائدة منه <span class="required">*</span></label>
+                    <input type="text" id="sug-benefit" required placeholder="ما الاستفادة الرئيسية منه؟">
+                </div>
+                <button type="submit" id="submit-suggest" class="submit-btn modal-submit">إرسال الاقتراح <i class="fas fa-paper-plane"></i></button>
+                <div id="sug-msg" class="sug-msg"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

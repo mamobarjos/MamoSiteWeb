@@ -47,7 +47,7 @@ const CATEGORIES = {
     "university_tools": ["general_tools", "study_and_courses", "research_tools", "presentation_tools", "cv_and_job_tools", "free_books", "plagiarism_detection", "ai_detection", "paraphrasing_tools"],
     "video": ["video_download", "video_editing", "motion_videos", "video_montage", "animated_video_icons", "subtitle_tools"],
     "writing_and_articles": ["free_article_sources", "ai_article_generation", "ai_writing_tools", "article_writing_tools", "email_writing_tools", "paid_article_writing"],
-    "marketing": [ "study_marketing", "content_ideas", "competitor_analysis", "data_collection", "audience_insights", "marketing_platforms", "response_tools", "task_management", "content_writing", "content_analysis", "ad_design", "video_design_pros", "video_recording", "ready_ad_templates", "ai_content_creation", "social_media_analysis", "ad_performance_analysis", "customer_communication", "chatbots", "content_publishing", "hashtags", "email_marketing", "affiliate_marketing", "affiliate_links", "link_management", "landing_pages", "social_media_tools", "tiktok_optimization", "social_media_management", "document_management", "account_trading", "ai_marketing" ]
+    "marketing": ["study_marketing", "content_ideas", "competitor_analysis", "data_collection", "audience_insights", "marketing_platforms", "response_tools", "task_management", "content_writing", "content_analysis", "ad_design", "video_design_pros", "video_recording", "ready_ad_templates", "ai_content_creation", "social_media_analysis", "ad_performance_analysis", "customer_communication", "chatbots", "content_publishing", "hashtags", "email_marketing", "affiliate_marketing", "affiliate_links", "link_management", "landing_pages", "social_media_tools", "tiktok_optimization", "social_media_management", "document_management", "account_trading", "ai_marketing"]
 };
 
 const SUB_CATEGORY_TRANSLATION = {
@@ -244,7 +244,7 @@ async function fetchSites() {
         let allData = [];
         let offset = 0;
         const pageSize = 1000;
-        
+
         while (true) {
             const { data, error } = await supabaseClient
                 .from('sites')
@@ -254,10 +254,10 @@ async function fetchSites() {
 
             if (error) throw error;
             if (!data || data.length === 0) break;
-            
+
             allData = allData.concat(data);
             if (data.length < pageSize) break;
-            
+
             offset += pageSize;
         }
 
@@ -271,7 +271,7 @@ async function fetchSites() {
                 };
             });
         filteredSites = [...allSites];
-        
+
         renderCategories();
         renderSites(true);
     } catch (error) {
@@ -294,7 +294,7 @@ async function fetchSites() {
 function renderCategories() {
     // Extract unique categories (Arabic names)
     const categories = ['الكل', ...new Set(allSites.map(site => site.main_category_ar))];
-    
+
     categoryContainer.innerHTML = categories.map(cat => `
         <button class="chip ${cat === 'الكل' ? 'active' : ''}" 
                 data-category="${cat === 'الكل' ? 'all' : cat}">
@@ -322,35 +322,92 @@ function selectCategory(categoryName) {
  * Create Site Card HTML
  */
 function createCard(site) {
+    const cleanUrl = site.website.replace(/^https?:\/\//i, '');
+    // Escape for use in onclick attribute
+    const escapedUrl = site.website.replace(/'/g, "\\'");
+    const escapedName = cleanUrl.replace(/'/g, "\\'");
+    const escapedDesc = (site.description || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+    const escapedBenefit = (site.benefit || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
     return `
         <article class="site-card" data-aos="fade-up">
+            <button class="share-btn" title="مشاركة" onclick="shareCard('${escapedName}', '${escapedUrl}', '${escapedDesc}', '${escapedBenefit}', '${escapedUrl}'); event.stopPropagation();">
+                <i class="fas fa-share-alt"></i>
+            </button>
             <div class="card-header">
-                <a href="${site.website}" target="_blank" class="site-name">${site.website.replace(/^https?:\/\//i, '')}</a>
                 <span class="category-badge">${site.main_category_ar}</span>
+                <a href="${site.website}" target="_blank" class="site-name">${cleanUrl}</a>
             </div>
-            <p class="site-desc">${site.description}</p>
-            ${site.benefit ? `
-            <div class="site-benefit">
-                <span class="benefit-label">الفائدة:</span>
-                ${site.benefit}
-            </div>` : ''}
+            <div class="card-body">
+                <p class="site-desc">${site.description}</p>
+                ${site.benefit ? `
+                <div class="site-benefit">
+                    <span class="benefit-label">الفائدة:</span>
+                    ${site.benefit}
+                </div>` : ''}
+            </div>
         </article>
     `;
 }
 
 /**
- * Filter and Render Sites
+ * Share Card Function — copies full formatted info to clipboard
  */
+let shareToastTimer;
+window.shareCard = function (name, url, description, benefit, websiteUrl) {
+    const fullUrl = websiteUrl.startsWith('http') ? websiteUrl : 'https://' + websiteUrl;
+    const shareText =
+        `🌐 ${name}\n` +
+        `🔗 ${fullUrl}\n\n` +
+        `📝 الوصف:\n${description}` +
+        (benefit ? `\n\n✅ الفائدة:\n${benefit}` : '') +
+        `\n\n━━━━━━━━━━━━━━\nشاركتُ من: https://mamosite.netlify.app/`;
+
+    // On mobile use Web Share API for native sharing
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile && navigator.share) {
+        navigator.share({ title: name, text: shareText, url: fullUrl })
+            .catch(() => copyShareText(shareText));
+    } else {
+        // Desktop: always copy to clipboard (Windows Share Dialog ignores text)
+        copyShareText(shareText);
+    }
+};
+
+function copyShareText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showShareToast('✅ تم نسخ معلومات الموقع');
+    }).catch(() => {
+        showShareToast('❌ تعذّر النسخ، يرجى المحاولة مجدداً.');
+    });
+}
+
+function showShareToast(message) {
+    let toast = document.getElementById('share-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'share-toast';
+        toast.className = 'share-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    clearTimeout(shareToastTimer);
+    toast.classList.add('show');
+    shareToastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+
 function filterAndRender() {
     const searchTerm = searchInput.value.toLowerCase().trim();
-    
+
     filteredSites = allSites.filter(site => {
         const matchesCategory = activeCategory === 'all' || site.main_category_ar === activeCategory;
-        const matchesSearch = !searchTerm || 
+        const matchesSearch = !searchTerm ||
             site.website.toLowerCase().includes(searchTerm) ||
             site.description.toLowerCase().includes(searchTerm) ||
             (site.benefit && site.benefit.toLowerCase().includes(searchTerm));
-        
+
         return matchesCategory && matchesSearch;
     });
 
@@ -385,8 +442,8 @@ function renderSites(reset = false) {
 
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = sitesToRender.map(site => createCard(site)).join('');
-    
-    while(tempDiv.firstChild) {
+
+    while (tempDiv.firstChild) {
         sitesGrid.appendChild(tempDiv.firstChild);
     }
 
@@ -419,7 +476,7 @@ let searchTimeout;
 
 searchInput.addEventListener('input', (e) => {
     const value = e.target.value.trim();
-    
+
     // Debounce the actual filtering (to avoid lag while typing)
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
@@ -456,14 +513,14 @@ function showSuggestions(query) {
     }
 
     const lowerQuery = query.toLowerCase();
-    
+
     // 1. Search in Categories
     const categories = ['الكل', ...new Set(allSites.map(site => site.main_category_ar))];
     const matchedCategories = categories.filter(cat => cat !== 'الكل' && cat.toLowerCase().includes(lowerQuery)).slice(0, 3);
-    
+
     // 2. Search in Sites
-    const matchedSites = allSites.filter(site => 
-        site.website.toLowerCase().includes(lowerQuery) || 
+    const matchedSites = allSites.filter(site =>
+        site.website.toLowerCase().includes(lowerQuery) ||
         site.description.toLowerCase().includes(lowerQuery)
     ).slice(0, 5);
 
@@ -508,14 +565,14 @@ function showSuggestions(query) {
     suggestionsDropdown.classList.remove('hidden');
 }
 
-window.selectSuggestionCategory = function(cat) {
+window.selectSuggestionCategory = function (cat) {
     selectCategory(cat);
     searchInput.value = '';
     suggestionsDropdown.classList.add('hidden');
     filterAndRender();
 };
 
-window.selectSuggestionSite = function(websiteName) {
+window.selectSuggestionSite = function (websiteName) {
     searchInput.value = websiteName.replace(/^https?:\/\//i, '');
     suggestionsDropdown.classList.add('hidden');
     filterAndRender();
@@ -536,11 +593,11 @@ sortSelect.addEventListener('change', () => {
 themeToggle.addEventListener('click', () => {
     document.body.classList.add('no-transition');
     void document.body.offsetHeight; // Force reflow
-    
+
     document.body.classList.toggle('light-mode');
     const isLight = document.body.classList.contains('light-mode');
     themeToggle.innerHTML = isLight ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-    
+
     void document.body.offsetHeight; // Force reflow again
     setTimeout(() => {
         document.body.classList.remove('no-transition');
@@ -578,7 +635,7 @@ sugCategorySelect.addEventListener('change', () => {
             break;
         }
     }
-    
+
     sugSubCategorySelect.innerHTML = '<option value="" disabled selected hidden>يرجى اختيار تصنيف فرعي</option>';
     if (selectedEnKey && CATEGORIES[selectedEnKey]) {
         CATEGORIES[selectedEnKey].forEach(subEnKey => {
@@ -617,18 +674,18 @@ window.addEventListener('click', (e) => {
 // Handle Form Submission
 suggestForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const website = document.getElementById('sug-website').value.trim();
     const category = document.getElementById('sug-category').value.trim();
     const subCategory = document.getElementById('sug-sub-category').value.trim();
     const description = document.getElementById('sug-desc').value.trim();
     const benefit = document.getElementById('sug-benefit').value.trim();
-    
+
     if (!website || !category || !subCategory || !description || !benefit) return;
-    
+
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإرسال...';
     submitBtn.disabled = true;
-    
+
     try {
         const { error } = await supabaseClient.from('suggestions').insert({
             website: website,
@@ -637,13 +694,13 @@ suggestForm.addEventListener('submit', async (e) => {
             description: description,
             benefit: benefit
         });
-        
+
         if (error) throw error;
-        
+
         sugMsg.innerHTML = '<i class="fas fa-check-circle"></i> شكراً لك! تم الإرسال بنجاح وتتم مراجعته.';
         sugMsg.className = 'sug-msg success';
         suggestForm.reset();
-        
+
         setTimeout(() => {
             closeModal();
         }, 3000);

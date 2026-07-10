@@ -320,10 +320,9 @@ body.light-mode .site-benefit {
 
 /* Sites Grid & Cards */
 .sites-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-    align-items: start;
+    column-width: 300px;
+    column-gap: 1.5rem;
+    width: 100%;
 }
 
 .site-card {
@@ -337,6 +336,9 @@ body.light-mode .site-benefit {
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    break-inside: avoid;
+    margin-bottom: 1.5rem;
+    width: 100%;
 }
 
 .site-card::before {
@@ -752,7 +754,7 @@ body.light-mode .suggest-form textarea {
         font-size: 0.95rem;
     }
     .sites-grid {
-        grid-template-columns: 1fr;
+        column-width: 100%;
     }
     .site-card {
         padding: 1.2rem;

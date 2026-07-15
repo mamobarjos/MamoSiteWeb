@@ -376,7 +376,6 @@ body.light-mode .site-benefit {
     font-weight: 700;
     color: var(--primary);
     text-decoration: none;
-    word-break: break-all;
     width: 100%;
     line-height: 1.4;
     transition: color 0.2s ease;
@@ -392,6 +391,14 @@ body.light-mode .site-benefit {
     font-size: 0.7rem;
     opacity: 0.6;
     flex-shrink: 0;
+}
+
+.url-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: ltr;
+    min-width: 0;
 }
 
 .site-name:hover {

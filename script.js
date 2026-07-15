@@ -322,7 +322,7 @@ function selectCategory(categoryName) {
  * Create Site Card HTML
  */
 function createCard(site) {
-    const cleanUrl = site.website.replace(/^https?:\/\//i, '');
+    const cleanUrl = site.website.replace(/^https?:\/\//i, '').replace(/\/$/, '');
     // Escape for use in onclick attribute
     const escapedUrl = site.website.replace(/'/g, "\\'");
     const escapedName = cleanUrl.replace(/'/g, "\\'");
@@ -335,7 +335,9 @@ function createCard(site) {
             </button>
             <div class="card-header">
                 <span class="category-badge">${site.main_category_ar}</span>
-                <a href="${site.website}" target="_blank" class="site-name">${cleanUrl}</a>
+                <a href="${site.website}" target="_blank" class="site-name">
+                    <span dir="ltr" class="url-text">${cleanUrl}</span>
+                </a>
             </div>
             <div class="card-body">
                 <p class="site-desc">${site.description}</p>
@@ -548,7 +550,7 @@ function showSuggestions(query) {
     if (matchedSites.length > 0) {
         html += `<div class="suggestion-group-title">مواقع مقترحة</div>`;
         matchedSites.forEach(site => {
-            const cleanUrl = site.website.replace(/^https?:\/\//i, '');
+            const cleanUrl = site.website.replace(/^https?:\/\//i, '').replace(/\/$/, '');
             html += `
                 <div class="suggestion-item" onclick="selectSuggestionSite('${site.website}')">
                     <i class="fas fa-globe suggestion-icon"></i>

@@ -14,51 +14,53 @@ const DEVICE_APPROVED_KEY = 'mamo_device_v1';
  * نقطة البداية: يتحقق من localStorage أولاً، ثم من Supabase
  */
 async function initIPGate() {
-    // المرحلة 1: هل الجهاز متذكر محلياً؟ (أسرع طريقة)
-    if (localStorage.getItem(DEVICE_APPROVED_KEY) === 'approved') {
-        hideGate(false); // إخفاء فوري بدون animation
-        return;
-    }
-
-    // المرحلة 2: جلب IP الزائر
     let visitorIP = null;
     try {
         const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
         const data = await res.json();
         visitorIP = data.ip;
     } catch (_) {
-        // إذا فشل جلب الـ IP، نعرض شاشة كلمة المرور للأمان
-        showGate(null);
+        if (localStorage.getItem(DEVICE_APPROVED_KEY) !== 'approved') {
+            showGate(null);
+        } else {
+            hideGate(false);
+        }
         return;
     }
 
-    // المرحلة 3: هل هذا IP في قائمة المسموح لهم؟
     try {
-        const { data, error } = await supabaseClient
-            .from('allowed_ips')
-            .select('ip, is_blocked')
-            .eq('ip', visitorIP)
-            .limit(1);
+        if (visitorIP) {
+            const { data, error } = await supabaseClient
+                .from('allowed_ips')
+                .select('ip, is_blocked')
+                .eq('ip', visitorIP)
+                .limit(1);
 
-        if (!error && data && data.length > 0) {
-            if (data[0].is_blocked) {
-                localStorage.removeItem(DEVICE_APPROVED_KEY);
-                showGate(visitorIP);
-                setGateMsg('error', '<i class="fas fa-ban"></i> هذا الجهاز محظور من الدخول.');
+            if (!error && data && data.length > 0) {
+                if (data[0].is_blocked) {
+                    localStorage.removeItem(DEVICE_APPROVED_KEY);
+                    showGate(visitorIP);
+                    setGateMsg('error', '<i class="fas fa-ban"></i> تم حظر هذا الجهاز. يرجى التواصل مع مسؤول النظام.');
+                    const pwdInput = document.getElementById('ip-gate-password');
+                    const submitBtn = document.getElementById('ip-gate-submit');
+                    if (pwdInput) pwdInput.disabled = true;
+                    if (submitBtn) submitBtn.disabled = true;
+                    return;
+                }
+                localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
+                hideGate(false);
                 return;
+            } else {
+                localStorage.removeItem(DEVICE_APPROVED_KEY);
             }
-            // IP مصرح به — نتذكر الجهاز ونفتح الموقع
-            localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
-            hideGate(true);
-            return;
-        } else {
-            localStorage.removeItem(DEVICE_APPROVED_KEY);
         }
     } catch (_) {
-        // في حالة فشل الاتصال بـ Supabase، نعرض شاشة كلمة المرور
+        if (localStorage.getItem(DEVICE_APPROVED_KEY) === 'approved') {
+            hideGate(false);
+            return;
+        }
     }
 
-    // المرحلة 4: IP غير مصرح به → عرض شاشة الحماية
     showGate(visitorIP);
 }
 
@@ -137,12 +139,13 @@ function showGate(visitorIP) {
                     
                     if (isBlocked) {
                         await supabaseClient.from('allowed_ips').upsert({ ip: window._gateVisitorIP, label: 'محظور', is_blocked: true }, { onConflict: 'ip' });
-                        const errMsg = '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> لقد تجاوزت 5 محاولات خاطئة متتالية! تم حظر جهازك.';
+                        const errMsg = '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> تم حظر هذا الجهاز. يرجى التواصل مع مسؤول النظام.';
                         setGateMsg('error', errMsg);
                         const errElem = document.getElementById('error-message');
                         if (errElem) errElem.innerHTML = errMsg;
                         submitBtn.disabled = true;
                         submitBtn.innerHTML = 'محظور';
+                        pwdInput.disabled = true;
                         return;
                     } else {
                         const remaining = 5 - currentFailed;

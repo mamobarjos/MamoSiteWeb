@@ -36,15 +36,23 @@ async function initIPGate() {
     try {
         const { data, error } = await supabaseClient
             .from('allowed_ips')
-            .select('ip')
+            .select('ip, is_blocked')
             .eq('ip', visitorIP)
             .limit(1);
 
         if (!error && data && data.length > 0) {
+            if (data[0].is_blocked) {
+                localStorage.removeItem(DEVICE_APPROVED_KEY);
+                showGate(visitorIP);
+                setGateMsg('error', '<i class="fas fa-ban"></i> هذا الجهاز محظور من الدخول.');
+                return;
+            }
             // IP مصرح به — نتذكر الجهاز ونفتح الموقع
             localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
             hideGate(true);
             return;
+        } else {
+            localStorage.removeItem(DEVICE_APPROVED_KEY);
         }
     } catch (_) {
         // في حالة فشل الاتصال بـ Supabase، نعرض شاشة كلمة المرور
@@ -102,11 +110,14 @@ function showGate(visitorIP) {
                 // ✅ كلمة المرور صحيحة
                 setGateMsg('success', '<i class="fas fa-check-circle"></i> تم التحقق! جاري الدخول...');
 
-                // إضافة IP إلى قائمة المسموح لهم
                 if (window._gateVisitorIP) {
                     await supabaseClient
                         .from('allowed_ips')
-                        .upsert({ ip: window._gateVisitorIP, label: 'تلقائي' }, { onConflict: 'ip' });
+                        .upsert({ ip: window._gateVisitorIP, label: 'تلقائي', is_blocked: false }, { onConflict: 'ip' });
+                    
+                    await supabaseClient
+                        .from('devices')
+                        .upsert({ device_id: window._gateVisitorIP, user_id: window._gateVisitorIP, failed_attempts: 0, is_blocked: false }, { onConflict: 'device_id' });
                 }
 
                 // تذكر الجهاز محلياً
@@ -115,7 +126,29 @@ function showGate(visitorIP) {
                 setTimeout(() => hideGate(true), 900);
             } else {
                 // ❌ كلمة المرور خاطئة
-                setGateMsg('error', '<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة، حاول مجدداً.');
+                if (window._gateVisitorIP) {
+                    let currentFailed = 0;
+                    const { data: devData } = await supabaseClient.from('devices').select('failed_attempts').eq('device_id', window._gateVisitorIP).single();
+                    if (devData) { currentFailed = devData.failed_attempts || 0; }
+                    currentFailed++;
+                    
+                    const isBlocked = currentFailed >= 5;
+                    await supabaseClient.from('devices').upsert({ device_id: window._gateVisitorIP, user_id: window._gateVisitorIP, failed_attempts: currentFailed, is_blocked: isBlocked }, { onConflict: 'device_id' });
+                    
+                    if (isBlocked) {
+                        await supabaseClient.from('allowed_ips').upsert({ ip: window._gateVisitorIP, label: 'محظور', is_blocked: true }, { onConflict: 'ip' });
+                        setGateMsg('error', '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> لقد تجاوزت 5 محاولات خاطئة متتالية! تم حظر جهازك.');
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = 'محظور';
+                        return;
+                    } else {
+                        const remaining = 5 - currentFailed;
+                        setGateMsg('error', <i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة. يتبقى لك  محاولات قبل حظر الجهاز.);
+                    }
+                } else {
+                    setGateMsg('error', '<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة، حاول مجدداً.');
+                }
+                
                 pwdInput.value = '';
                 pwdInput.focus();
                 submitBtn.disabled = false;

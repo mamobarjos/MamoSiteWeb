@@ -13,33 +13,71 @@ const DEVICE_APPROVED_KEY = 'mamo_device_v1';
 /**
  * نقطة البداية: يتحقق من localStorage أولاً، ثم من Supabase
  */
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    let browser = "Unknown";
+    if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
+    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
+    else if (ua.includes("Firefox")) browser = "Firefox";
+    else if (ua.includes("Edg")) browser = "Edge";
+    
+    let os = "Unknown";
+    if (ua.includes("Windows")) os = "Windows";
+    else if (ua.includes("Mac")) os = "MacOS";
+    else if (ua.includes("Linux")) os = "Linux";
+    else if (ua.includes("Android")) os = "Android";
+    else if (ua.includes("iOS") || ua.includes("iPhone")) os = "iOS";
+    
+    return browser + " / " + os;
+}
+
 async function initIPGate() {
     let visitorIP = null;
+    let locationData = "Unknown";
     try {
-        const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
+        const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
         const data = await res.json();
         visitorIP = data.ip;
-    } catch (_) {
-        if (localStorage.getItem(DEVICE_APPROVED_KEY) !== 'approved') {
-            showGate(null);
-        } else {
-            hideGate(false);
+        if(data.city && data.country_name) {
+            locationData = data.city + ", " + data.country_name;
         }
-        return;
+    } catch (_) {
+        try {
+            const res2 = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
+            const data2 = await res2.json();
+            visitorIP = data2.ip;
+        } catch(e) {}
     }
 
+    let deviceId = localStorage.getItem('mamo_device_id_v2');
+    if (!deviceId) {
+        deviceId = generateUUID();
+        localStorage.setItem('mamo_device_id_v2', deviceId);
+    }
+    window._gateDeviceID = deviceId;
+    window._gateVisitorIP = visitorIP;
+    window._gateUserAgent = getBrowserInfo();
+    window._gateLocation = locationData;
+
     try {
-        if (visitorIP) {
+        if (deviceId) {
             const { data, error } = await supabaseClient
-                .from('allowed_ips')
-                .select('ip, is_blocked')
-                .eq('ip', visitorIP)
+                .from('devices')
+                .select('is_blocked')
+                .eq('device_id', deviceId)
                 .limit(1);
 
             if (!error && data && data.length > 0) {
                 if (data[0].is_blocked) {
                     localStorage.removeItem(DEVICE_APPROVED_KEY);
-                    showGate(visitorIP);
+                    showGate();
                     setGateMsg('error', '<i class="fas fa-ban"></i> تم حظر هذا الجهاز. يرجى التواصل مع مسؤول النظام.');
                     const pwdInput = document.getElementById('ip-gate-password');
                     const submitBtn = document.getElementById('ip-gate-submit');
@@ -47,9 +85,10 @@ async function initIPGate() {
                     if (submitBtn) submitBtn.disabled = true;
                     return;
                 }
-                localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
-                hideGate(false);
-                return;
+                if (localStorage.getItem(DEVICE_APPROVED_KEY) === 'approved') {
+                    hideGate(false);
+                    return;
+                }
             } else {
                 localStorage.removeItem(DEVICE_APPROVED_KEY);
             }
@@ -61,19 +100,18 @@ async function initIPGate() {
         }
     }
 
-    showGate(visitorIP);
+    showGate();
 }
+
 
 /**
  * عرض شاشة الحماية وربط أحداث النموذج
  */
-function showGate(visitorIP) {
+function showGate() {
     const gate = document.getElementById('ip-gate');
     if (!gate) return;
     gate.classList.remove('hidden', 'fading');
-
-    // حفظ IP للاستخدام لاحقاً
-    window._gateVisitorIP = visitorIP;
+    document.body.style.overflow = 'hidden';
 
     const form        = document.getElementById('ip-gate-form');
     const msgDiv      = document.getElementById('ip-gate-msg');
@@ -81,25 +119,29 @@ function showGate(visitorIP) {
     const pwdInput    = document.getElementById('ip-gate-password');
     const toggleBtn   = document.getElementById('ip-gate-toggle-pwd');
 
-    // زر إظهار/إخفاء كلمة المرور
-    toggleBtn.addEventListener('click', () => {
-        const isHidden = pwdInput.type === 'password';
-        pwdInput.type = isHidden ? 'text' : 'password';
-        toggleBtn.innerHTML = `<i class="fas fa-${isHidden ? 'eye-slash' : 'eye'}"></i>`;
+    // Remove old event listener if it exists to prevent duplicates
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    const newPwdInput = document.getElementById('ip-gate-password');
+    const newSubmitBtn = document.getElementById('ip-gate-submit');
+    const newToggleBtn = document.getElementById('ip-gate-toggle-pwd');
+
+    newToggleBtn.addEventListener('click', () => {
+        const isHidden = newPwdInput.type === 'password';
+        newPwdInput.type = isHidden ? 'text' : 'password';
+        newToggleBtn.innerHTML = `<i class="fas fa-${isHidden ? 'eye-slash' : 'eye'}"></i>`;
     });
 
-    // معالجة إرسال النموذج
-    form.addEventListener('submit', async (e) => {
+    newForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const entered = pwdInput.value.trim();
+        const entered = newPwdInput.value.trim();
         if (!entered) return;
 
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
+        newSubmitBtn.disabled = true;
+        newSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
         setGateMsg('checking', '<i class="fas fa-circle-notch fa-spin"></i> جاري التحقق من كلمة المرور...');
 
         try {
-            // جلب كلمة المرور من Supabase
             const { data, error } = await supabaseClient
                 .from('site_settings')
                 .select('value')
@@ -108,73 +150,81 @@ function showGate(visitorIP) {
 
             if (error || !data) throw new Error('تعذّر التحقق، حاول مجدداً.');
 
+            const deviceId = window._gateDeviceID;
+            const visitorIP = window._gateVisitorIP;
+            const userAgent = window._gateUserAgent;
+            const location = window._gateLocation;
+
             if (entered === data.value) {
-                // ✅ كلمة المرور صحيحة
                 setGateMsg('success', '<i class="fas fa-check-circle"></i> تم التحقق! جاري الدخول...');
 
-                if (window._gateVisitorIP) {
-                    await supabaseClient
-                        .from('allowed_ips')
-                        .upsert({ ip: window._gateVisitorIP, label: 'تلقائي', is_blocked: false }, { onConflict: 'ip' });
+                if (deviceId) {
+                    await supabaseClient.from('devices').upsert({ 
+                        device_id: deviceId, 
+                        user_id: visitorIP || 'Unknown', 
+                        failed_attempts: 0, 
+                        is_blocked: false,
+                        user_agent: userAgent,
+                        location: location
+                    }, { onConflict: 'device_id' });
                     
-                    await supabaseClient
-                        .from('devices')
-                        .upsert({ device_id: window._gateVisitorIP, user_id: window._gateVisitorIP, failed_attempts: 0, is_blocked: false }, { onConflict: 'device_id' });
+                    if(visitorIP) {
+                        await supabaseClient.from('allowed_ips').upsert({ ip: visitorIP, label: 'تلقائي', is_blocked: false }, { onConflict: 'ip' });
+                    }
                 }
 
-                // تذكر الجهاز محلياً
                 localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
-
                 setTimeout(() => hideGate(true), 900);
             } else {
-                // ❌ كلمة المرور خاطئة
-                if (window._gateVisitorIP) {
+                if (deviceId) {
                     let currentFailed = 0;
-                    const { data: devData } = await supabaseClient.from('devices').select('failed_attempts').eq('device_id', window._gateVisitorIP).single();
+                    const { data: devData } = await supabaseClient.from('devices').select('failed_attempts').eq('device_id', deviceId).single();
                     if (devData) { currentFailed = devData.failed_attempts || 0; }
                     currentFailed++;
                     
                     const isBlocked = currentFailed >= 5;
-                    await supabaseClient.from('devices').upsert({ device_id: window._gateVisitorIP, user_id: window._gateVisitorIP, failed_attempts: currentFailed, is_blocked: isBlocked }, { onConflict: 'device_id' });
+                    await supabaseClient.from('devices').upsert({ 
+                        device_id: deviceId, 
+                        user_id: visitorIP || 'Unknown', 
+                        failed_attempts: currentFailed, 
+                        is_blocked: isBlocked,
+                        user_agent: userAgent,
+                        location: location
+                    }, { onConflict: 'device_id' });
                     
                     if (isBlocked) {
-                        await supabaseClient.from('allowed_ips').upsert({ ip: window._gateVisitorIP, label: 'محظور', is_blocked: true }, { onConflict: 'ip' });
                         const errMsg = '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> تم حظر هذا الجهاز. يرجى التواصل مع مسؤول النظام.';
                         setGateMsg('error', errMsg);
                         const errElem = document.getElementById('error-message');
                         if (errElem) errElem.innerHTML = errMsg;
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = 'محظور';
-                        pwdInput.disabled = true;
+                        newSubmitBtn.disabled = true;
+                        newSubmitBtn.innerHTML = 'محظور';
+                        newPwdInput.disabled = true;
                         return;
                     } else {
                         const remaining = 5 - currentFailed;
-                        const errMsg = `<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة. يتبقى لك ${remaining} محاولات قبل حظر الجهاز.`;
+                        const errMsg = `<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة (متبقي ${remaining} محاولات).`;
                         setGateMsg('error', errMsg);
                         const errElem = document.getElementById('error-message');
                         if (errElem) errElem.innerHTML = errMsg;
                     }
-                } else {
-                    const errMsg = '<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة، حاول مجدداً.';
-                    setGateMsg('error', errMsg);
-                    const errElem = document.getElementById('error-message');
-                    if (errElem) errElem.innerHTML = errMsg;
                 }
                 
-                pwdInput.value = '';
-                pwdInput.focus();
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<span>دخول</span><i class="fas fa-arrow-left"></i>';
+                newPwdInput.value = '';
+                newPwdInput.focus();
+                newSubmitBtn.disabled = false;
+                newSubmitBtn.innerHTML = '<span>دخول</span><i class="fas fa-arrow-left"></i>';
             }
         } catch (err) {
             setGateMsg('error', `<i class="fas fa-exclamation-circle"></i> ${err.message || 'حدث خطأ، حاول مجدداً.'}`);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span>دخول</span><i class="fas fa-arrow-left"></i>';
+            newSubmitBtn.disabled = false;
+            newSubmitBtn.innerHTML = '<span>دخول</span><i class="fas fa-arrow-left"></i>';
         }
     });
 }
 
 function setGateMsg(type, html) {
+
     const msgDiv = document.getElementById('ip-gate-msg');
     if (!msgDiv) return;
     msgDiv.className = `ip-gate-msg ${type}`;
@@ -189,6 +239,7 @@ function hideGate(animate = true) {
     if (!gate) return;
     if (!animate) {
         gate.classList.add('hidden');
+        document.body.style.overflow = '';
         return;
     }
     gate.classList.add('fading');

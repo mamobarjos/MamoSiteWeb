@@ -5,6 +5,158 @@ const SUPABASE_KEY = 'sb_publishable_TJTh0TspGgFgEKgEMvB9Cw_zhNef79T';
 // Initialize Supabase Client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ================================================================
+// === IP GATE — نظام التحكم في الوصول
+// ================================================================
+const DEVICE_APPROVED_KEY = 'mamo_device_v1';
+
+/**
+ * نقطة البداية: يتحقق من localStorage أولاً، ثم من Supabase
+ */
+async function initIPGate() {
+    // المرحلة 1: هل الجهاز متذكر محلياً؟ (أسرع طريقة)
+    if (localStorage.getItem(DEVICE_APPROVED_KEY) === 'approved') {
+        hideGate(false); // إخفاء فوري بدون animation
+        return;
+    }
+
+    // المرحلة 2: جلب IP الزائر
+    let visitorIP = null;
+    try {
+        const res = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(5000) });
+        const data = await res.json();
+        visitorIP = data.ip;
+    } catch (_) {
+        // إذا فشل جلب الـ IP، نعرض شاشة كلمة المرور للأمان
+        showGate(null);
+        return;
+    }
+
+    // المرحلة 3: هل هذا IP في قائمة المسموح لهم؟
+    try {
+        const { data, error } = await supabaseClient
+            .from('allowed_ips')
+            .select('ip')
+            .eq('ip', visitorIP)
+            .limit(1);
+
+        if (!error && data && data.length > 0) {
+            // IP مصرح به — نتذكر الجهاز ونفتح الموقع
+            localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
+            hideGate(true);
+            return;
+        }
+    } catch (_) {
+        // في حالة فشل الاتصال بـ Supabase، نعرض شاشة كلمة المرور
+    }
+
+    // المرحلة 4: IP غير مصرح به → عرض شاشة الحماية
+    showGate(visitorIP);
+}
+
+/**
+ * عرض شاشة الحماية وربط أحداث النموذج
+ */
+function showGate(visitorIP) {
+    const gate = document.getElementById('ip-gate');
+    if (!gate) return;
+    gate.classList.remove('hidden', 'fading');
+
+    // حفظ IP للاستخدام لاحقاً
+    window._gateVisitorIP = visitorIP;
+
+    const form        = document.getElementById('ip-gate-form');
+    const msgDiv      = document.getElementById('ip-gate-msg');
+    const submitBtn   = document.getElementById('ip-gate-submit');
+    const pwdInput    = document.getElementById('ip-gate-password');
+    const toggleBtn   = document.getElementById('ip-gate-toggle-pwd');
+
+    // زر إظهار/إخفاء كلمة المرور
+    toggleBtn.addEventListener('click', () => {
+        const isHidden = pwdInput.type === 'password';
+        pwdInput.type = isHidden ? 'text' : 'password';
+        toggleBtn.innerHTML = `<i class="fas fa-${isHidden ? 'eye-slash' : 'eye'}"></i>`;
+    });
+
+    // معالجة إرسال النموذج
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const entered = pwdInput.value.trim();
+        if (!entered) return;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
+        setGateMsg('checking', '<i class="fas fa-circle-notch fa-spin"></i> جاري التحقق من كلمة المرور...');
+
+        try {
+            // جلب كلمة المرور من Supabase
+            const { data, error } = await supabaseClient
+                .from('site_settings')
+                .select('value')
+                .eq('key', 'access_password')
+                .single();
+
+            if (error || !data) throw new Error('تعذّر التحقق، حاول مجدداً.');
+
+            if (entered === data.value) {
+                // ✅ كلمة المرور صحيحة
+                setGateMsg('success', '<i class="fas fa-check-circle"></i> تم التحقق! جاري الدخول...');
+
+                // إضافة IP إلى قائمة المسموح لهم
+                if (window._gateVisitorIP) {
+                    await supabaseClient
+                        .from('allowed_ips')
+                        .upsert({ ip: window._gateVisitorIP, label: 'تلقائي' }, { onConflict: 'ip' });
+                }
+
+                // تذكر الجهاز محلياً
+                localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
+
+                setTimeout(() => hideGate(true), 900);
+            } else {
+                // ❌ كلمة المرور خاطئة
+                setGateMsg('error', '<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة، حاول مجدداً.');
+                pwdInput.value = '';
+                pwdInput.focus();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>دخول</span><i class="fas fa-arrow-left"></i>';
+            }
+        } catch (err) {
+            setGateMsg('error', `<i class="fas fa-exclamation-circle"></i> ${err.message || 'حدث خطأ، حاول مجدداً.'}`);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>دخول</span><i class="fas fa-arrow-left"></i>';
+        }
+    });
+}
+
+function setGateMsg(type, html) {
+    const msgDiv = document.getElementById('ip-gate-msg');
+    if (!msgDiv) return;
+    msgDiv.className = `ip-gate-msg ${type}`;
+    msgDiv.innerHTML = html;
+}
+
+/**
+ * إخفاء شاشة الحماية بـ animation أو فوراً
+ */
+function hideGate(animate = true) {
+    const gate = document.getElementById('ip-gate');
+    if (!gate) return;
+    if (!animate) {
+        gate.classList.add('hidden');
+        return;
+    }
+    gate.classList.add('fading');
+    setTimeout(() => gate.classList.add('hidden'), 420);
+}
+
+// تشغيل الحماية فور تحميل الصفحة
+initIPGate();
+// ================================================================
+// === END IP GATE
+// ================================================================
+
+
 // Category Translation Dictionary
 const CATEGORY_TRANSLATION = {
     "artificial_intelligence": "الذكاء الاصطناعي",

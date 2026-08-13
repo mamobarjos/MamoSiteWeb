@@ -25,6 +25,36 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="dark-mode">
+
+    <!-- ======= IP Gate Overlay ======= -->
+    <div id="ip-gate" class="ip-gate-overlay">
+        <div class="ip-gate-card">
+            <div class="ip-gate-logo">
+                <img src="mamo.png" alt="Mamo Site">
+                <span>Mamo Site</span>
+            </div>
+            <div class="ip-gate-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+            <h2>هذا الموقع خاص</h2>
+            <p>أدخل كلمة المرور للوصول إلى المحتوى</p>
+            <form id="ip-gate-form" autocomplete="off">
+                <div class="ip-gate-input-wrap">
+                    <input type="password" id="ip-gate-password" placeholder="كلمة المرور..." autocomplete="new-password">
+                    <button type="button" id="ip-gate-toggle-pwd" aria-label="إظهار/إخفاء كلمة المرور">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <button type="submit" id="ip-gate-submit">
+                    <span>دخول</span>
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div id="ip-gate-msg" class="ip-gate-msg"></div>
+            </form>
+        </div>
+    </div>
+    <!-- ======= End IP Gate ======= -->
+
     <nav class="navbar">
         <div class="nav-container">
             <div class="logo-section">

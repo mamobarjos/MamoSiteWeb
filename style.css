@@ -1001,3 +1001,251 @@ body.light-mode mark.highlight-text {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* ================================================
+   IP GATE OVERLAY — نظام حماية الوصول
+   ================================================ */
+
+.ip-gate-overlay {
+    position: fixed;
+    inset: 0;
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 1rem;
+    transition: opacity 0.4s ease;
+}
+
+.ip-gate-overlay.hidden {
+    display: none;
+}
+
+.ip-gate-overlay.fading {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ip-gate-card {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 24px;
+    padding: 2.8rem 2.5rem 2.4rem;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow:
+        0 0 0 1px rgba(99, 102, 241, 0.12),
+        0 25px 60px rgba(0, 0, 0, 0.6),
+        0 0 80px rgba(99, 102, 241, 0.08);
+    animation: gateEntrance 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    position: relative;
+    overflow: hidden;
+}
+
+.ip-gate-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 60% 20%, rgba(99,102,241,0.06) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+@keyframes gateEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(32px) scale(0.93);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ip-gate-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    margin-bottom: 2rem;
+}
+
+.ip-gate-logo img {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    object-fit: contain;
+}
+
+.ip-gate-logo span {
+    font-size: 1.35rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #6366f1 30%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+}
+
+.ip-gate-icon {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.18));
+    border: 2px solid rgba(99, 102, 241, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.4rem;
+    font-size: 1.75rem;
+    color: #818cf8;
+    animation: lockPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes lockPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.35);
+    }
+    50% {
+        box-shadow: 0 0 0 14px rgba(99, 102, 241, 0);
+    }
+}
+
+.ip-gate-card h2 {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    margin-bottom: 0.4rem;
+}
+
+.ip-gate-card > p {
+    color: #94a3b8;
+    margin-bottom: 2rem;
+    font-size: 0.93rem;
+    line-height: 1.5;
+}
+
+.ip-gate-input-wrap {
+    position: relative;
+    margin-bottom: 0.85rem;
+}
+
+.ip-gate-input-wrap input {
+    width: 100%;
+    padding: 0.9rem 3.2rem 0.9rem 1.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(99, 102, 241, 0.28);
+    border-radius: 14px;
+    color: #f1f5f9;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+    text-align: right;
+    box-sizing: border-box;
+    direction: ltr;
+    letter-spacing: 0.1em;
+}
+
+.ip-gate-input-wrap input:focus {
+    outline: none;
+    border-color: #6366f1;
+    background: rgba(99, 102, 241, 0.08);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+.ip-gate-input-wrap input::placeholder {
+    color: #475569;
+    letter-spacing: normal;
+    direction: rtl;
+}
+
+#ip-gate-toggle-pwd {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+#ip-gate-toggle-pwd:hover {
+    color: #818cf8;
+}
+
+#ip-gate-submit {
+    width: 100%;
+    padding: 0.95rem;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #a855f7 100%);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    margin-bottom: 0.9rem;
+    letter-spacing: 0.02em;
+}
+
+#ip-gate-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(99, 102, 241, 0.45);
+}
+
+#ip-gate-submit:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+#ip-gate-submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ip-gate-msg {
+    font-size: 0.88rem;
+    min-height: 1.4em;
+    padding: 0.55rem 0.9rem;
+    border-radius: 10px;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.ip-gate-msg:empty {
+    padding: 0;
+}
+
+.ip-gate-msg.error {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.ip-gate-msg.success {
+    color: #86efac;
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.ip-gate-msg.checking {
+    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}

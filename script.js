@@ -137,16 +137,25 @@ function showGate(visitorIP) {
                     
                     if (isBlocked) {
                         await supabaseClient.from('allowed_ips').upsert({ ip: window._gateVisitorIP, label: 'محظور', is_blocked: true }, { onConflict: 'ip' });
-                        setGateMsg('error', '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> لقد تجاوزت 5 محاولات خاطئة متتالية! تم حظر جهازك.');
+                        const errMsg = '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> لقد تجاوزت 5 محاولات خاطئة متتالية! تم حظر جهازك.';
+                        setGateMsg('error', errMsg);
+                        const errElem = document.getElementById('error-message');
+                        if (errElem) errElem.innerHTML = errMsg;
                         submitBtn.disabled = true;
                         submitBtn.innerHTML = 'محظور';
                         return;
                     } else {
                         const remaining = 5 - currentFailed;
-                        setGateMsg('error', <i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة. يتبقى لك  محاولات قبل حظر الجهاز.);
+                        const errMsg = <i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة. يتبقى لك  محاولات قبل حظر الجهاز.;
+                        setGateMsg('error', errMsg);
+                        const errElem = document.getElementById('error-message');
+                        if (errElem) errElem.innerHTML = errMsg;
                     }
                 } else {
-                    setGateMsg('error', '<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة، حاول مجدداً.');
+                    const errMsg = '<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة، حاول مجدداً.';
+                    setGateMsg('error', errMsg);
+                    const errElem = document.getElementById('error-message');
+                    if (errElem) errElem.innerHTML = errMsg;
                 }
                 
                 pwdInput.value = '';

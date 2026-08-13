@@ -146,7 +146,7 @@ function showGate(visitorIP) {
                         return;
                     } else {
                         const remaining = 5 - currentFailed;
-                        const errMsg = <i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة. يتبقى لك  محاولات قبل حظر الجهاز.;
+                        const errMsg = `<i class="fas fa-times-circle"></i> كلمة المرور غير صحيحة. يتبقى لك ${remaining} محاولات قبل حظر الجهاز.`;
                         setGateMsg('error', errMsg);
                         const errElem = document.getElementById('error-message');
                         if (errElem) errElem.innerHTML = errMsg;

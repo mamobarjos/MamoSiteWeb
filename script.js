@@ -13,12 +13,6 @@ const DEVICE_APPROVED_KEY = 'mamo_device_v1';
 /**
  * نقطة البداية: يتحقق من localStorage أولاً، ثم من Supabase
  */
-function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
 
 function getBrowserInfo() {
     const ua = navigator.userAgent;
@@ -35,8 +29,16 @@ function getBrowserInfo() {
     else if (ua.includes("Android")) os = "Android";
     else if (ua.includes("iOS") || ua.includes("iPhone")) os = "iOS";
     
-    return browser + " / " + os;
+    let resolution = "Unknown";
+    if (window.screen) {
+        resolution = window.screen.width + "x" + window.screen.height;
+    }
+    
+    let lang = navigator.language || "Unknown";
+    
+    return "متصفح " + browser + " | " + os + " | " + resolution;
 }
+
 
 async function initIPGate() {
     let visitorIP = null;
@@ -46,7 +48,8 @@ async function initIPGate() {
         const data = await res.json();
         visitorIP = data.ip;
         if(data.city && data.country_name) {
-            locationData = data.city + ", " + data.country_name;
+            let flag = data.country_code ? String.fromCodePoint(...[...data.country_code.toUpperCase()].map(c => c.charCodeAt() + 0x1F1A5)) : "";
+            locationData = flag + " " + data.city + ", " + data.country_name;
         }
     } catch (_) {
         try {
@@ -56,29 +59,27 @@ async function initIPGate() {
         } catch(e) {}
     }
 
-    let deviceId = localStorage.getItem('mamo_device_id_v2');
-    if (!deviceId) {
-        deviceId = generateUUID();
-        localStorage.setItem('mamo_device_id_v2', deviceId);
+    if (!visitorIP) {
+        visitorIP = "unknown-" + Math.floor(Math.random()*10000);
     }
-    window._gateDeviceID = deviceId;
+
     window._gateVisitorIP = visitorIP;
     window._gateUserAgent = getBrowserInfo();
     window._gateLocation = locationData;
 
     try {
-        if (deviceId) {
+        if (visitorIP) {
             const { data, error } = await supabaseClient
                 .from('devices')
                 .select('is_blocked')
-                .eq('device_id', deviceId)
+                .eq('device_id', visitorIP)
                 .limit(1);
 
             if (!error && data && data.length > 0) {
                 if (data[0].is_blocked) {
                     localStorage.removeItem(DEVICE_APPROVED_KEY);
                     showGate();
-                    setGateMsg('error', '<i class="fas fa-ban"></i> تم حظر هذا الجهاز. يرجى التواصل مع مسؤول النظام.');
+                    setGateMsg('error', '<i class="fas fa-ban"></i> تم حظر هذا الـ IP. يرجى التواصل مع مسؤول النظام.');
                     const pwdInput = document.getElementById('ip-gate-password');
                     const submitBtn = document.getElementById('ip-gate-submit');
                     if (pwdInput) pwdInput.disabled = true;
@@ -150,7 +151,6 @@ function showGate() {
 
             if (error || !data) throw new Error('تعذّر التحقق، حاول مجدداً.');
 
-            const deviceId = window._gateDeviceID;
             const visitorIP = window._gateVisitorIP;
             const userAgent = window._gateUserAgent;
             const location = window._gateLocation;
@@ -158,34 +158,30 @@ function showGate() {
             if (entered === data.value) {
                 setGateMsg('success', '<i class="fas fa-check-circle"></i> تم التحقق! جاري الدخول...');
 
-                if (deviceId) {
+                if (visitorIP) {
                     await supabaseClient.from('devices').upsert({ 
-                        device_id: deviceId, 
-                        user_id: visitorIP || 'Unknown', 
+                        device_id: visitorIP, 
+                        user_id: visitorIP, 
                         failed_attempts: 0, 
                         is_blocked: false,
                         user_agent: userAgent,
                         location: location
                     }, { onConflict: 'device_id' });
-                    
-                    if(visitorIP) {
-                        await supabaseClient.from('allowed_ips').upsert({ ip: visitorIP, label: 'تلقائي', is_blocked: false }, { onConflict: 'ip' });
-                    }
                 }
 
                 localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
                 setTimeout(() => hideGate(true), 900);
             } else {
-                if (deviceId) {
+                if (visitorIP) {
                     let currentFailed = 0;
-                    const { data: devData } = await supabaseClient.from('devices').select('failed_attempts').eq('device_id', deviceId).single();
+                    const { data: devData } = await supabaseClient.from('devices').select('failed_attempts').eq('device_id', visitorIP).single();
                     if (devData) { currentFailed = devData.failed_attempts || 0; }
                     currentFailed++;
                     
                     const isBlocked = currentFailed >= 5;
                     await supabaseClient.from('devices').upsert({ 
-                        device_id: deviceId, 
-                        user_id: visitorIP || 'Unknown', 
+                        device_id: visitorIP, 
+                        user_id: visitorIP, 
                         failed_attempts: currentFailed, 
                         is_blocked: isBlocked,
                         user_agent: userAgent,
@@ -193,7 +189,7 @@ function showGate() {
                     }, { onConflict: 'device_id' });
                     
                     if (isBlocked) {
-                        const errMsg = '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> تم حظر هذا الجهاز. يرجى التواصل مع مسؤول النظام.';
+                        const errMsg = '<i class="fas fa-ban"></i> <b>تنبيه أمني:</b> تم حظر هذا الـ IP. يرجى التواصل مع مسؤول النظام.';
                         setGateMsg('error', errMsg);
                         const errElem = document.getElementById('error-message');
                         if (errElem) errElem.innerHTML = errMsg;

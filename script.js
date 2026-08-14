@@ -47,6 +47,12 @@ function getBrowserInfo() {
 
 
 async function initIPGate() {
+    const isAuth = localStorage.getItem('isAuth') === 'true';
+    if (!isAuth) {
+        removeLoader();
+        showGate();
+    }
+
     let visitorIP = null;
     let locationData = "Unknown";
     try {
@@ -99,17 +105,22 @@ async function initIPGate() {
                     if (submitBtn) submitBtn.disabled = true;
                     return;
                 }
-                if (localStorage.getItem('isAuth') === 'true') {
+                if (isAuth) {
                     removeLoader();
                     hideGate(false);
                     return;
                 }
             } else {
-                localStorage.removeItem('isAuth');
+                if (isAuth) {
+                    localStorage.removeItem('isAuth');
+                    removeLoader();
+                    showGate();
+                }
             }
         }
-    } catch (_) {
-        if (localStorage.getItem('isAuth') === 'true') {
+    } catch (err) {
+        console.error(err);
+        if (isAuth) {
             removeLoader();
             hideGate(false);
             return;
@@ -117,7 +128,9 @@ async function initIPGate() {
     }
 
     removeLoader();
-    showGate();
+    if (!isAuth) {
+        showGate();
+    }
 }
 
 function removeLoader() {

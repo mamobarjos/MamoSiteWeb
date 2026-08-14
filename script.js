@@ -65,8 +65,13 @@ async function initIPGate() {
         } catch(e) {}
     }
 
+    let fallbackId = localStorage.getItem('mamo_fallback_id');
+    if (!fallbackId) {
+        fallbackId = Math.floor(Math.random()*10000);
+        localStorage.setItem('mamo_fallback_id', fallbackId);
+    }
     if (!visitorIP) {
-        visitorIP = "Hidden-IP-" + Math.floor(Math.random()*10000);
+        visitorIP = "Hidden-IP-" + fallbackId;
         locationData = "مخفي (VPN)";
     }
 
@@ -84,7 +89,8 @@ async function initIPGate() {
 
             if (!error && data && data.length > 0) {
                 if (data[0].is_blocked) {
-                    localStorage.removeItem(DEVICE_APPROVED_KEY);
+                    localStorage.removeItem('isAuth');
+                    removeLoader();
                     showGate();
                     setGateMsg('error', '<i class="fas fa-ban"></i> تم حظر هذا الـ IP. يرجى التواصل مع مسؤول النظام.');
                     const pwdInput = document.getElementById('ip-gate-password');
@@ -93,22 +99,33 @@ async function initIPGate() {
                     if (submitBtn) submitBtn.disabled = true;
                     return;
                 }
-                if (localStorage.getItem(DEVICE_APPROVED_KEY) === 'approved') {
+                if (localStorage.getItem('isAuth') === 'true') {
+                    removeLoader();
                     hideGate(false);
                     return;
                 }
             } else {
-                localStorage.removeItem(DEVICE_APPROVED_KEY);
+                localStorage.removeItem('isAuth');
             }
         }
     } catch (_) {
-        if (localStorage.getItem(DEVICE_APPROVED_KEY) === 'approved') {
+        if (localStorage.getItem('isAuth') === 'true') {
+            removeLoader();
             hideGate(false);
             return;
         }
     }
 
+    removeLoader();
     showGate();
+}
+
+function removeLoader() {
+    const loader = document.getElementById('mamo-loader');
+    if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 400);
+    }
 }
 
 
@@ -176,7 +193,7 @@ function showGate() {
                     }, { onConflict: 'device_id' });
                 }
 
-                localStorage.setItem(DEVICE_APPROVED_KEY, 'approved');
+                localStorage.setItem('isAuth', 'true');
                 setTimeout(() => hideGate(true), 900);
             } else {
                 if (visitorIP) {
@@ -242,11 +259,15 @@ function hideGate(animate = true) {
     if (!gate) return;
     if (!animate) {
         gate.classList.add('hidden');
-        document.body.style.overflow = '';
+        document.body.style.overflow = 'auto';
         return;
     }
     gate.classList.add('fading');
-    setTimeout(() => gate.classList.add('hidden'), 420);
+    setTimeout(() => {
+        gate.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }, 420);
+}
 }
 
 // تشغيل الحماية فور تحميل الصفحة

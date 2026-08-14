@@ -26,8 +26,17 @@
 </head>
 <body class="dark-mode">
 
+
+    <!-- ======= Loading Overlay ======= -->
+    <div id="mamo-loader" style="position: fixed; inset: 0; background: #0f172a; z-index: 999999; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.4s ease;">
+        <i class="fas fa-circle-notch fa-spin" style="font-size: 3rem; color: #6366f1; margin-bottom: 1rem;"></i>
+        <h3 style="color: #fff; font-family: 'Cairo', sans-serif;">جاري التحقق...</h3>
+    </div>
+    <!-- ======= End Loading Overlay ======= -->
+
     <!-- ======= IP Gate Overlay ======= -->
-    <div id="ip-gate" class="ip-gate-overlay">
+    <div id="ip-gate" class="ip-gate-overlay hidden">
+
         <div class="ip-gate-card">
             <div class="ip-gate-logo">
                 <img src="mamo.png" alt="Mamo Site">

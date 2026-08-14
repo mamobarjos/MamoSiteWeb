@@ -23,11 +23,17 @@ function getBrowserInfo() {
     else if (ua.includes("Edg")) browser = "Edge";
     
     let os = "Unknown";
-    if (ua.includes("Windows")) os = "Windows";
-    else if (ua.includes("Mac")) os = "MacOS";
-    else if (ua.includes("Linux")) os = "Linux";
-    else if (ua.includes("Android")) os = "Android";
-    else if (ua.includes("iOS") || ua.includes("iPhone")) os = "iOS";
+    if (ua.includes("iPhone") || ua.includes("iPad") || ua.includes("iPod") || ua.includes("iOS") || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        os = "iOS";
+    } else if (ua.includes("Android")) {
+        os = "Android";
+    } else if (ua.includes("Windows")) {
+        os = "Windows";
+    } else if (ua.includes("Mac")) {
+        os = "MacOS";
+    } else if (ua.includes("Linux")) {
+        os = "Linux";
+    }
     
     let resolution = "Unknown";
     if (window.screen) {
@@ -60,7 +66,8 @@ async function initIPGate() {
     }
 
     if (!visitorIP) {
-        visitorIP = "unknown-" + Math.floor(Math.random()*10000);
+        visitorIP = "Hidden-IP-" + Math.floor(Math.random()*10000);
+        locationData = "مخفي (VPN)";
     }
 
     window._gateVisitorIP = visitorIP;

@@ -281,7 +281,6 @@ function hideGate(animate = true) {
         document.body.style.overflow = 'auto';
     }, 420);
 }
-}
 
 // تشغيل الحماية فور تحميل الصفحة
 initIPGate();
